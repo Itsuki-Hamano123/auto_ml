@@ -24,9 +24,8 @@ import numpy as np
 import pandas as pd
 import keras
 from keras import backend as K
-from keras.callbacks import TensorBoard
-from keras.datasets import mnist
-from keras.layers import Dense
+from keras.callbacks import EarlyStopping,TensorBoard
+from keras.layers import Dense, Dropout
 from keras.models import Sequential
 
 import nni
@@ -43,15 +42,17 @@ LABEL_COLUM = 'class'
 FEATURE_NUM = 13
 NUM_CLASSES = 3
 
-
+MODEL_DIR = './model'
 
 def create_wine_model(hyper_params, input_shape=(FEATURE_NUM,), num_classes=NUM_CLASSES):
     '''
     Create model
     '''
     layers = [
-        Dense(20, activation='relu', input_shape=input_shape),
-        Dense(25, activation='relu'),
+        Dense(hyper_params['hidden_size1'], activation='relu', input_shape=input_shape),
+        Dropout(rate=hyper_params['drop_out_late1'], seed=7),
+        Dense(hyper_params['hidden_size2'], activation='relu'),
+        Dropout(rate=hyper_params['drop_out_late2'], seed=7),
         Dense(num_classes, activation='softmax')
     ]
 
@@ -102,26 +103,39 @@ def train(args, params):
     x_train, y_train, x_test, y_test = load_wine_data()
     model = create_wine_model(params)
 
-    model.fit(x_train, y_train, batch_size=args.batch_size, epochs=args.epochs, verbose=1,
-        validation_data=(x_test, y_test), callbacks=[SendMetrics(), TensorBoard(log_dir=TENSORBOARD_DIR)])
+    es_callback = EarlyStopping(monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto')
 
-    _, acc = model.evaluate(x_test, y_test, verbose=0)
-    LOG.debug('Final result is: %d', acc)
-    nni.report_final_result(acc)
+    model.fit(x_train, y_train, batch_size=args.batch_size, epochs=args.epochs, verbose=1,
+        validation_data=(x_test, y_test), callbacks=[SendMetrics(), TensorBoard(log_dir=TENSORBOARD_DIR), es_callback])
+
+    _, train_acc = model.evaluate(x_test, y_test, verbose=0)
+    _, test_acc = model.evaluate(x_test, y_test, verbose=0)
+    
+    fpath = 'epochs{e:02d}-train_acc{train_acc:.2f}-test_acc{test_acc:.2f}'.format(e=args.epochs, train_acc=train_acc, test_acc=test_acc)
+    model.save_weights(os.path.join(MODEL_DIR, fpath+'.hdf5'))
+    json_string = model.to_json()
+    open(os.path.join(MODEL_DIR, fpath+'.json'), 'w').write(json_string)
+
+    LOG.debug('Final result is: %d', test_acc)
+    nni.report_final_result(test_acc)
 
 def generate_default_params():
     '''
     Generate default hyper parameters
     '''
     return {
+        'hidden_size1': 20,
+        'hidden_size2': 25,
+        'drop_out_late1': 0.5,
+        'drop_out_late2': 0.5,
         'optimizer': 'Adam',
         'learning_rate': 0.001
     }
 
 if __name__ == '__main__':
     PARSER = argparse.ArgumentParser()
-    PARSER.add_argument("--batch_size", type=int, default=10, help="batch size", required=False)
-    PARSER.add_argument("--epochs", type=int, default=10, help="Train epochs", required=False)
+    PARSER.add_argument("--batch_size", type=int, default=256, help="batch size", required=False)
+    PARSER.add_argument("--epochs", type=int, default=30, help="Train epochs", required=False)
 
     ARGS, UNKNOWN = PARSER.parse_known_args()
 

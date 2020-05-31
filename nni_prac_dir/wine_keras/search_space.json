@@ -1,4 +1,8 @@
 {
+    "hidden_size1":{"_type":"choice","_value":[15, 20, 25, 30]},
+    "hidden_size2":{"_type":"choice","_value":[15, 20, 25, 30]},
+    "drop_out_late1":{"_type":"choice","_value":[0.2, 0.3, 0.5]},
+    "drop_out_late2":{"_type":"choice","_value":[0.2, 0.3, 0.5]},
     "optimizer":{"_type":"choice","_value":["Adam", "SGD"]},
-    "learning_rate":{"_type":"choice","_value":[0.0001, 0.001, 0.002, 0.005, 0.01]}
+    "learning_rate":{"_type":"choice","_value":[0.0005, 0.001, 0.005, 0.01]}
 }
