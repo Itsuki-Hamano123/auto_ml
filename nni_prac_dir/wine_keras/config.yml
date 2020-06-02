@@ -1,5 +1,5 @@
 authorName: default
-experimentName: example_mnist-keras
+experimentName: wine-keras
 trialConcurrency: 1
 maxExecDuration: 1h
 maxTrialNum: 30
