@@ -1,1 +1,1 @@
-"# auto_ml" 
+# AutoMLツールの比較は'tool_comparison'に
